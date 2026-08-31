@@ -20,6 +20,7 @@ export function setupSwagger(app: INestApplication) {
     .addTag('Auth', 'Registro, login, sesión y recuperación de contraseña')
     .addTag('Worker', 'Perfil del trabajador, tarifas, horarios, cobertura y disponibilidad')
     .addTag('Portfolio', 'Fotos de trabajos: carga, compresión y URLs para lazy loading')
+    .addTag('Search', 'Búsqueda de trabajadores disponibles por cuadrante o coordenadas (HU-12)')
     .addTag('Admin', 'Moderación de cuentas')
     .addTag('usuarios')
     .addTag('zonas')
