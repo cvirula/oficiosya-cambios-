@@ -1,19 +1,20 @@
 import { useMemo, useState } from 'react';
 import Logo from '../components/Logo';
+import Input from '../components/ui/Input';
 import PasswordInput from '../components/ui/PasswordInput';
 import Button from '../components/ui/Button';
-import { LockIcon } from '../components/icons/Icons';
+import { LockIcon, MailIcon } from '../components/icons/Icons';
 import { Link, useNavigate } from '../router';
 import { useAuth } from '../auth/AuthContext';
 import authStyles from '../styles/auth.module.css';
 
-function readRecoveryTokens() {
+function readRecoveryParams() {
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const search = new URLSearchParams(window.location.search);
   return {
+    token: search.get('token') || hash.get('token') || '',
     accessToken: hash.get('access_token') || search.get('access_token') || '',
     refreshToken: hash.get('refresh_token') || search.get('refresh_token') || '',
-    type: hash.get('type') || search.get('type') || '',
   };
 }
 
@@ -26,17 +27,23 @@ function validatePassword(value) {
 export default function ResetPassword() {
   const { resetPassword } = useAuth();
   const navigate = useNavigate();
-  const tokens = useMemo(() => readRecoveryTokens(), []);
+  const params = useMemo(() => readRecoveryParams(), []);
+  const hasLinkToken = Boolean(params.token || params.accessToken);
+  const [correo, setCorreo] = useState('');
+  const [codigo, setCodigo] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [formError, setFormError] = useState(
-    tokens.accessToken ? '' : 'Abre el enlace que enviamos a tu correo para continuar.',
-  );
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
-  const [errors, setErrors] = useState({ password: '', confirmPassword: '' });
+  const [errors, setErrors] = useState({
+    correo: '',
+    codigo: '',
+    password: '',
+    confirmPassword: '',
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,17 +53,29 @@ export default function ResetPassword() {
       : password !== confirmPassword
         ? 'Las contraseñas no coinciden.'
         : '';
+    const correoError =
+      !hasLinkToken && !correo.trim() ? 'El correo electrónico es obligatorio.' : '';
+    const codigoError =
+      !hasLinkToken && codigo.trim().length !== 6 ? 'Ingresa el código de 6 dígitos.' : '';
 
-    setErrors({ password: passwordError, confirmPassword: confirmError });
-    setFormError(tokens.accessToken ? '' : 'Abre el enlace que enviamos a tu correo para continuar.');
+    setErrors({
+      correo: correoError,
+      codigo: codigoError,
+      password: passwordError,
+      confirmPassword: confirmError,
+    });
+    setFormError('');
     setSuccess('');
-    if (passwordError || confirmError || !tokens.accessToken) return;
+    if (passwordError || confirmError || correoError || codigoError) return;
 
     setLoading(true);
     try {
       const data = await resetPassword({
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken || undefined,
+        token: params.token || undefined,
+        accessToken: params.accessToken || undefined,
+        refreshToken: params.refreshToken || undefined,
+        correo: hasLinkToken ? undefined : correo.trim(),
+        codigo: hasLinkToken ? undefined : codigo.trim(),
         password,
       });
       setSuccess(data.message || 'La contraseña se restableció correctamente.');
@@ -75,7 +94,9 @@ export default function ResetPassword() {
       <header className={authStyles.header}>
         <h1 className={authStyles.title}>Nueva contraseña</h1>
         <p className={authStyles.subtitle}>
-          Elige una contraseña nueva para tu cuenta.
+          {hasLinkToken
+            ? 'Elige una contraseña nueva para tu cuenta.'
+            : 'Ingresa el código de 6 dígitos y tu nueva contraseña.'}
         </p>
       </header>
 
@@ -91,6 +112,35 @@ export default function ResetPassword() {
           </p>
         )}
 
+        {!hasLinkToken && (
+          <>
+            <Input
+              id="reset-email"
+              label="Correo electrónico"
+              type="email"
+              placeholder="correo@ejemplo.com"
+              value={correo}
+              onChange={(e) => setCorreo(e.target.value)}
+              icon={MailIcon}
+              error={errors.correo}
+              autoComplete="email"
+              disabled={loading}
+            />
+            <Input
+              id="reset-code"
+              label="Código de 6 dígitos"
+              type="text"
+              placeholder="000000"
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              error={errors.codigo}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              disabled={loading}
+            />
+          </>
+        )}
+
         <PasswordInput
           id="reset-password"
           label="Nueva contraseña"
@@ -100,7 +150,7 @@ export default function ResetPassword() {
           icon={LockIcon}
           error={errors.password}
           autoComplete="new-password"
-          disabled={loading || !tokens.accessToken}
+          disabled={loading}
           showPassword={showPassword}
           onToggleVisibility={() => setShowPassword((prev) => !prev)}
         />
@@ -114,12 +164,12 @@ export default function ResetPassword() {
           icon={LockIcon}
           error={errors.confirmPassword}
           autoComplete="new-password"
-          disabled={loading || !tokens.accessToken}
+          disabled={loading}
           showPassword={showConfirmPassword}
           onToggleVisibility={() => setShowConfirmPassword((prev) => !prev)}
         />
 
-        <Button type="submit" loading={loading} disabled={loading || !tokens.accessToken}>
+        <Button type="submit" loading={loading} disabled={loading}>
           Guardar contraseña
         </Button>
       </form>

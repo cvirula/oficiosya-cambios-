@@ -52,7 +52,7 @@ export default function ForgotPassword() {
       <header className={authStyles.header}>
         <h1 className={authStyles.title}>Recuperar contraseña</h1>
         <p className={authStyles.subtitle}>
-          Ingresa tu correo y te enviaremos un enlace para restablecerla.
+          Ingresa tu correo. Te enviaremos un código y un enlace temporales para restablecerla.
         </p>
       </header>
 
@@ -86,6 +86,10 @@ export default function ForgotPassword() {
       </form>
 
       <p className={authStyles.footer}>
+        <Link to="/reset-password" className={authStyles.footerLink}>
+          Ya tengo un código
+        </Link>
+        {' · '}
         <Link to="/login" className={authStyles.footerLink}>
           Volver a iniciar sesión
         </Link>

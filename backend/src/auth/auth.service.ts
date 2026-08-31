@@ -21,12 +21,19 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ResendVerificationDto, VerifyEmailDto } from './dto/verify-email.dto';
+import { MailSimulatorService } from './recovery/mail-simulator.service';
+import { RecoveryTokenStore } from './recovery/recovery-token.store';
+
+const MENSAJE_RECUPERACION =
+  'Si el correo está registrado, te enviaremos instrucciones para restablecer la contraseña.';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly config: ConfigService,
+    private readonly recoveryTokens: RecoveryTokenStore,
+    private readonly mailSimulator: MailSimulatorService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -137,26 +144,69 @@ export class AuthService {
 
   async forgotPassword(dto: ForgotPasswordDto) {
     const correo = dto.correo.toLowerCase();
-    const frontendUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+    const usuario = await this.findUsuarioByCorreo(correo);
 
-    await this.supabase.anon.auth.resetPasswordForEmail(correo, {
-      redirectTo: `${frontendUrl}/reset-password`,
-    });
+    if (usuario && assertCuentaOperable(usuario) === null) {
+      const ttlMinutes = Number(this.config.get('RESET_TOKEN_TTL_MINUTES') || 15);
+      const issued = this.recoveryTokens.issue(usuario.id_usuario, correo, ttlMinutes);
+      const frontendUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+      const enlace = `${frontendUrl}/reset-password?token=${issued.token}`;
+
+      this.mailSimulator.enviarRecuperacion({
+        correo,
+        codigo: issued.codigo,
+        enlace,
+        expiresAt: issued.expiresAt,
+        expiresInMinutes: issued.expiresInMinutes,
+      });
+
+      await this.registrarBitacora(usuario.id_usuario, 'FORGOT_PASSWORD', 'usuario');
+    }
 
     return {
-      message:
-        'Si el correo está registrado, te enviaremos instrucciones para restablecer la contraseña.',
+      message: MENSAJE_RECUPERACION,
+      expiresInMinutes: Number(this.config.get('RESET_TOKEN_TTL_MINUTES') || 15),
+      envio: 'simulado',
     };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    if (!dto.accessToken) {
-      throw new BadRequestException(
-        'Falta el token de recuperación. Abre el enlace que enviamos a tu correo.',
-      );
+    if (dto.token || dto.codigo) {
+      return this.resetPasswordWithChallenge(dto);
     }
 
-    const scoped = this.userClient(dto.accessToken, dto.refreshToken);
+    if (dto.accessToken) {
+      return this.resetPasswordWithSupabaseSession(dto);
+    }
+
+    throw new BadRequestException(
+      'Debes enviar el token del enlace o el código de 6 dígitos junto con el correo.',
+    );
+  }
+
+  private async resetPasswordWithChallenge(dto: ResetPasswordDto) {
+    const challenge = dto.token
+      ? this.recoveryTokens.consumeByToken(dto.token)
+      : dto.correo && dto.codigo
+        ? this.recoveryTokens.consumeByCode(dto.correo, dto.codigo)
+        : null;
+
+    if (!challenge) {
+      throw new UnauthorizedException('El código o enlace de recuperación no es válido o expiró.');
+    }
+
+    const usuario = await this.findUsuarioById(challenge.idUsuario);
+    if (!usuario) {
+      throw new UnauthorizedException('El código o enlace de recuperación no es válido o expiró.');
+    }
+
+    await this.applyNewPassword(usuario, dto.password);
+    await this.registrarBitacora(usuario.id_usuario, 'RESET_PASSWORD', 'usuario');
+    return { message: 'La contraseña se restableció correctamente.' };
+  }
+
+  private async resetPasswordWithSupabaseSession(dto: ResetPasswordDto) {
+    const scoped = this.userClient(dto.accessToken as string, dto.refreshToken);
     const { data: userData, error: userError } = await scoped.auth.getUser(dto.accessToken);
     if (userError || !userData.user?.email) {
       throw new UnauthorizedException('El enlace de recuperación no es válido o expiró.');
@@ -380,6 +430,23 @@ export class AuthService {
   private async updatePasswordHash(idUsuario: number, password: string) {
     const password_hash = await bcrypt.hash(password, 12);
     await this.patchUsuario(idUsuario, { password_hash });
+  }
+
+  private async applyNewPassword(usuario: UsuarioRow, password: string) {
+    await this.updatePasswordHash(usuario.id_usuario, password);
+
+    const authUser = await this.findAuthUserByEmail(usuario.correo);
+    if (authUser) {
+      const { error } = await this.supabase.admin.auth.admin.updateUserById(authUser.id, {
+        password,
+      });
+      if (error) {
+        throw new BadRequestException(error.message || 'No se pudo restablecer la contraseña.');
+      }
+      return;
+    }
+
+    await this.ensureAuthUser(usuario, password);
   }
 
   private async signIn(correo: string, password: string) {

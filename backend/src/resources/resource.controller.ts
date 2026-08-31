@@ -10,6 +10,7 @@ import {
   Type,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { ResourceService } from './resource.service';
@@ -18,30 +19,36 @@ import { ResourceConfig } from './resources.config';
 export function createResourceController(config: ResourceConfig): Type<unknown> {
   const readGuard = config.publicRead ? OptionalJwtAuthGuard : JwtAuthGuard;
 
+  @ApiTags(config.path)
+  @ApiBearerAuth('access-token')
   @Controller(config.path)
   class ResourceController {
     constructor(public readonly resources: ResourceService) {}
 
     @Get()
     @UseGuards(readGuard)
+    @ApiOperation({ summary: `Listar ${config.path}` })
     findAll(@Query() query: Record<string, string>) {
       return this.resources.findAll(config, query);
     }
 
     @Get(Array.isArray(config.pk) ? ':idPerfil/:idZona' : ':id')
     @UseGuards(readGuard)
+    @ApiOperation({ summary: `Obtener un registro de ${config.path}` })
     findOne(@Param('id') id?: string, @Param('idPerfil') idPerfil?: string, @Param('idZona') idZona?: string) {
       return this.resources.findOne(config, keysFromParams(config, { id, idPerfil, idZona }));
     }
 
     @Post()
     @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: `Crear un registro en ${config.path}` })
     create(@Body() body: Record<string, unknown>) {
       return this.resources.create(config, body);
     }
 
     @Patch(Array.isArray(config.pk) ? ':idPerfil/:idZona' : ':id')
     @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: `Actualizar un registro de ${config.path}` })
     update(
       @Body() body: Record<string, unknown>,
       @Param('id') id?: string,
@@ -57,6 +64,7 @@ export function createResourceController(config: ResourceConfig): Type<unknown> 
 
     @Delete(Array.isArray(config.pk) ? ':idPerfil/:idZona' : ':id')
     @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: `Eliminar un registro de ${config.path}` })
     remove(
       @Param('id') id?: string,
       @Param('idPerfil') idPerfil?: string,

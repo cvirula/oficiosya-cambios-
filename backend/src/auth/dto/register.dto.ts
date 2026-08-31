@@ -1,3 +1,4 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsEmail,
@@ -10,12 +11,14 @@ import {
 } from 'class-validator';
 
 export class RegisterDto {
+  @ApiProperty({ example: 'Ana Pérez' })
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(2, { message: 'El nombre completo es obligatorio.' })
   @MaxLength(150)
   nombre: string;
 
+  @ApiProperty({ example: 'ana@example.com' })
   @Transform(({ value }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
   )
@@ -23,6 +26,7 @@ export class RegisterDto {
   @MaxLength(150)
   correo: string;
 
+  @ApiPropertyOptional({ example: '70001234' })
   @IsOptional()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
@@ -32,11 +36,13 @@ export class RegisterDto {
   })
   telefono?: string;
 
+  @ApiProperty({ example: 'secreto123', minLength: 8 })
   @IsString()
   @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres.' })
   @MaxLength(72)
   password: string;
 
+  @ApiPropertyOptional({ enum: ['cliente', 'trabajador'], example: 'cliente' })
   @IsOptional()
   @IsIn(['cliente', 'trabajador'], {
     message: 'El modo debe ser cliente o trabajador.',

@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { setupSwagger } from './swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -18,9 +19,12 @@ async function bootstrap() {
     }),
   );
 
+  setupSwagger(app);
+
   const port = Number(process.env.PORT) || 3000;
   await app.listen(port);
   console.log(`OficiosYa API escuchando en http://localhost:${port}/api`);
+  console.log(`Swagger: http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

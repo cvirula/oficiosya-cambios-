@@ -10,4 +10,5 @@ npm install
 npm run dev
 ```
 
-API: http://localhost:3000/api
+- API: http://localhost:3000/api
+- Swagger: http://localhost:3000/api/docs
