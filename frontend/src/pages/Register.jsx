@@ -6,10 +6,12 @@ import Button from '../components/ui/Button';
 import { UserIcon, MailIcon, LockIcon, PhoneIcon } from '../components/icons/Icons';
 import { Link, useNavigate } from '../router';
 import { useAuth } from '../auth/AuthContext';
+import { updateWorkerProfile } from '../api/worker';
 import authStyles from '../styles/auth.module.css';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[0-9+\s()-]{7,20}$/;
+const IS_WORKER = (mode) => mode === 'worker';
 
 function validateName(value) {
   if (!value.trim()) return 'El nombre completo es obligatorio.';
@@ -40,7 +42,13 @@ function validateConfirmPassword(value, password) {
   return '';
 }
 
-const INITIAL_ERRORS = {
+function validateOficio(value, isWorker) {
+  if (!isWorker) return '';
+  if (!value.trim()) return 'El oficio principal es obligatorio.';
+  return '';
+}
+
+const BASE_ERRORS = {
   name: '',
   email: '',
   phone: '',
@@ -48,7 +56,13 @@ const INITIAL_ERRORS = {
   confirmPassword: '',
 };
 
-const INITIAL_TOUCHED = {
+const WORKER_ERRORS = {
+  oficio: '',
+  descripcion: '',
+  experiencia: '',
+};
+
+const BASE_TOUCHED = {
   name: false,
   email: false,
   phone: false,
@@ -56,20 +70,31 @@ const INITIAL_TOUCHED = {
   confirmPassword: false,
 };
 
-export default function Register({ mode = 'cliente' }) {
+const WORKER_TOUCHED = {
+  oficio: false,
+  descripcion: false,
+  experiencia: false,
+};
+
+export default function Register({ mode = 'client' }) {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const isWorker = IS_WORKER(mode);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [oficio, setOficio] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [experiencia, setExperiencia] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
-  const [errors, setErrors] = useState(INITIAL_ERRORS);
-  const [touched, setTouched] = useState(INITIAL_TOUCHED);
+  const [errors, setErrors] = useState({ ...BASE_ERRORS, ...WORKER_ERRORS });
+  const [touched, setTouched] = useState({ ...BASE_TOUCHED, ...WORKER_TOUCHED });
 
   const markTouched = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -109,6 +134,11 @@ export default function Register({ mode = 'cliente' }) {
     }));
   };
 
+  const handleOficioBlur = () => {
+    markTouched('oficio');
+    setErrors((prev) => ({ ...prev, oficio: validateOficio(oficio, isWorker) }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -118,6 +148,9 @@ export default function Register({ mode = 'cliente' }) {
       phone: validatePhone(phone),
       password: validatePassword(password),
       confirmPassword: validateConfirmPassword(confirmPassword, password),
+      oficio: validateOficio(oficio, isWorker),
+      descripcion: '',
+      experiencia: '',
     };
 
     setTouched({
@@ -126,6 +159,9 @@ export default function Register({ mode = 'cliente' }) {
       phone: true,
       password: true,
       confirmPassword: true,
+      oficio: isWorker,
+      descripcion: false,
+      experiencia: false,
     });
     setErrors(nextErrors);
     setFormError('');
@@ -134,13 +170,25 @@ export default function Register({ mode = 'cliente' }) {
 
     setLoading(true);
     try {
-      await register({
+      const data = await register({
         nombre: name.trim(),
         correo: email.trim(),
         telefono: phone.trim() || undefined,
         password,
-        modo: mode === 'worker' ? 'trabajador' : 'cliente',
+        modo: isWorker ? 'trabajador' : 'cliente',
       });
+
+      if (isWorker) {
+        await updateWorkerProfile(
+          {
+            oficio_principal: oficio.trim(),
+            descripcion: descripcion.trim() || undefined,
+            experiencia: experiencia.trim() || undefined,
+          },
+          data.tokens.accessToken,
+        );
+      }
+
       sessionStorage.setItem(
         'oficiosya.registerSuccess',
         JSON.stringify({ correo: email.trim() }),
@@ -162,7 +210,9 @@ export default function Register({ mode = 'cliente' }) {
       <header className={authStyles.header}>
         <h1 className={authStyles.title}>Crear cuenta</h1>
         <p className={authStyles.subtitle}>
-          Completa tus datos para comenzar.
+          {isWorker
+            ? 'Completa tus datos profesionales para ofrecer tus servicios.'
+            : 'Completa tus datos para comenzar.'}
         </p>
       </header>
 
@@ -215,6 +265,50 @@ export default function Register({ mode = 'cliente' }) {
           autoComplete="tel"
           disabled={loading}
         />
+
+        {isWorker && (
+          <div className={authStyles.workerSection}>
+            <p className={authStyles.workerSectionTitle}>Datos del trabajador</p>
+
+            <Input
+              id="register-oficio"
+              label="Oficio principal"
+              type="text"
+              placeholder="Ej. Plomería, Electricidad"
+              value={oficio}
+              onChange={(e) => setOficio(e.target.value)}
+              onBlur={handleOficioBlur}
+              icon={UserIcon}
+              error={touched.oficio && errors.oficio ? errors.oficio : ''}
+              disabled={loading}
+            />
+
+            <div>
+              <label htmlFor="register-descripcion" className={authStyles.fieldLabel}>
+                Descripción (opcional)
+              </label>
+              <textarea
+                id="register-descripcion"
+                className={authStyles.textarea}
+                placeholder="Cuéntanos sobre tus servicios"
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                disabled={loading}
+                rows={3}
+              />
+            </div>
+
+            <Input
+              id="register-experiencia"
+              label="Experiencia (opcional)"
+              type="text"
+              placeholder="Ej. 5 años"
+              value={experiencia}
+              onChange={(e) => setExperiencia(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+        )}
 
         <PasswordInput
           id="register-password"

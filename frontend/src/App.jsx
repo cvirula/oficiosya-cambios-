@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Home from './pages/Home';
+import WorkerProfile from './pages/WorkerProfile';
 import { Router, useNavigate, usePath } from './router';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 
@@ -33,6 +34,9 @@ function AppRoutes({ mode, onModeChange }) {
   }
 
   if (isAuthenticated && !AUTH_PATHS.has(path)) {
+    if (path === '/worker/profile') {
+      return <WorkerProfile />;
+    }
     return <Home />;
   }
 
