@@ -1,4 +1,6 @@
 import { useAuth } from '../auth/AuthContext';
+import { Link } from '../router';
+import { DEFAULT_WORKER_ID } from '../data/workers';
 import styles from './Home.module.css';
 
 export default function Home() {
@@ -12,6 +14,11 @@ export default function Home() {
       <div className={styles.welcome}>
         <h1>Bienvenido</h1>
         <h1>OficiosYA</h1>
+        <p>
+          <Link to={`/workers/${DEFAULT_WORKER_ID}`}>
+            Ver perfil público de ejemplo
+          </Link>
+        </p>
       </div>
     </div>
   );
