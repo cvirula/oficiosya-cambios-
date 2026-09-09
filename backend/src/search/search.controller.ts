@@ -1,12 +1,27 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SearchProfilesDto } from './dto/search-profiles.dto';
 import { SearchWorkersDto } from './dto/search-workers.dto';
+import { SearchIndexService } from './search-index.service';
 import { SearchService } from './search.service';
 
 @ApiTags('Search')
 @Controller('search')
 export class SearchController {
-  constructor(private readonly search: SearchService) {}
+  constructor(
+    private readonly search: SearchService,
+    private readonly index: SearchIndexService,
+  ) {}
+
+  @Get('profiles')
+  @ApiOperation({
+    summary: 'Motor de búsqueda indexada de perfiles (HU-10, HU-11)',
+    description:
+      'Cruza texto libre, zona, disponibilidad, precio y reputación. Usa la función SQL buscar_perfiles_indexados e índices GIN/B-tree.',
+  })
+  searchProfiles(@Query() query: SearchProfilesDto) {
+    return this.index.searchProfiles(query);
+  }
 
   @Get('quadrants')
   @ApiOperation({

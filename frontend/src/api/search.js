@@ -17,3 +17,13 @@ export function searchWorkers(filters = {}) {
   const suffix = query.toString() ? `?${query}` : '';
   return api(`/search/workers${suffix}`);
 }
+
+export function searchProfiles(filters = {}) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value == null || value === '') continue;
+    query.set(key, String(value));
+  }
+  const suffix = query.toString() ? `?${query}` : '';
+  return api(`/search/profiles${suffix}`);
+}

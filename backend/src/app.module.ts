@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { ResourcesModule } from './resources/resources.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
+import { RequestsModule } from './requests/requests.module';
 import { SearchModule } from './search/search.module';
 import { WorkerModule } from './worker/worker.module';
 
@@ -16,6 +17,7 @@ import { WorkerModule } from './worker/worker.module';
     WorkerModule,
     PortfolioModule,
     SearchModule,
+    RequestsModule,
   ],
 })
 export class AppModule {}
