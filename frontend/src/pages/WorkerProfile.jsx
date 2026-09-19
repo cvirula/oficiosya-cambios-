@@ -4,6 +4,7 @@ import Checkbox from '../components/ui/Checkbox';
 import { useAuth } from '../auth/AuthContext';
 import { getWorkerProfile, listZonas, updateWorkerProfile } from '../api/worker';
 import styles from './WorkerProfile.module.css';
+import { Link } from '../router';
 
 const TIPOS_TARIFA = [
   { value: 'por_hora', label: 'Por hora' },
@@ -136,6 +137,7 @@ export default function WorkerProfile() {
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
+        <p><Link to="/worker/requests">← Volver al panel de peticiones</Link></p>
         <header className={styles.header}>
           <h1 className={styles.title}>Tarifas y cobertura</h1>
           <p className={styles.subtitle}>

@@ -78,6 +78,8 @@ export default function Home() {
       <header className={styles.header}>
         <div className={styles.brand}><Logo variant="compact" /><span>Oficios<span className={styles.brandAccent}>YA</span></span></div>
         <nav className={styles.nav} aria-label="Cuenta">
+          <Link to="/client/requests">Mis solicitudes</Link>
+          <Link to="/worker/requests">Panel trabajador</Link>
           <Link to="/worker/profile">Mi perfil de trabajador</Link>
           <button type="button" className={ui.textButton} onClick={() => logout()}>Cerrar sesión</button>
         </nav>

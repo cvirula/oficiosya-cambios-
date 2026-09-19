@@ -224,3 +224,59 @@ test('Desktop/mobile layout and modal keyboard focus; capture manual examples', 
   await expect(page.getByRole('dialog')).not.toBeVisible();
 });
 
+test('HU-17: worker manages allowed request transitions and filters the panel', async ({ page }) => {
+  let current = {
+    id_solicitud: 81, id_cliente: 22, id_trabajador: 7, id_servicio: 19,
+    descripcion: 'Reparar una fuga debajo del lavaplatos.', ubicacion_aprox: 'Zona 10',
+    fecha_deseada: '2099-01-01T09:00:00.000Z', estado: 'Enviada', urgente: true,
+    cliente: { id_usuario: 22, nombre: 'María Cliente', telefono: '5555-5555' },
+    trabajador: { id_perfil: 7, nombre: 'Andrea López', oficio_principal: 'Plomería' },
+    servicio: services[0], resena: null,
+  };
+  const updates = [];
+  await page.route('**/api/requests/worker', (route) => response(route, [current]));
+  await page.route('**/api/requests/81/status', (route) => {
+    const body = route.request().postDataJSON();
+    updates.push(body);
+    current = { ...current, estado: body.estado };
+    return response(route, current);
+  });
+  await page.goto('/worker/requests');
+  await expect(page.getByRole('heading', { name: 'Peticiones recibidas' })).toBeVisible();
+  await expect(page.getByText('María Cliente')).toBeVisible();
+  await page.getByRole('button', { name: 'Aceptar' }).click();
+  await expect(page.getByText('Aceptada', { exact: true })).toBeVisible();
+  expect(updates).toEqual([{ estado: 'Aceptada' }]);
+  await page.getByRole('button', { name: 'Iniciar trabajo' }).click();
+  await expect(page.getByText('En proceso', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Marcar completada' }).click();
+  await expect(page.getByText('No hay peticiones en esta vista')).toBeVisible();
+  await page.getByRole('button', { name: 'Finalizadas' }).click();
+  await expect(page.getByText('Completada', { exact: true })).toBeVisible();
+});
+
+test('HU-18: client sees history and can review only a completed unreviewed request', async ({ page }) => {
+  const completed = {
+    id_solicitud: 82, id_cliente: 100, id_trabajador: 7, id_servicio: 19,
+    descripcion: 'Instalar un lavaplatos nuevo.', ubicacion_aprox: null,
+    fecha_deseada: null, estado: 'Completada', urgente: false,
+    cliente: user, trabajador: { id_perfil: 7, nombre: 'Andrea López', oficio_principal: 'Plomería' },
+    servicio: services[0], resena: null,
+  };
+  let reviewPayload;
+  await page.route('**/api/requests/client', (route) => response(route, [completed]));
+  await page.route('**/api/requests/82/review', (route) => {
+    reviewPayload = route.request().postDataJSON();
+    return response(route, { id_resena: 5, id_solicitud: 82, ...reviewPayload, fecha: '2099-01-02T00:00:00Z' }, 201);
+  });
+  await page.goto('/client/requests');
+  await expect(page.getByRole('heading', { name: 'Mis solicitudes' })).toBeVisible();
+  await page.getByRole('button', { name: 'Calificar servicio' }).click();
+  await page.getByRole('radio', { name: '4 estrellas' }).click();
+  await page.getByLabel('Comentario opcional').fill('Buen trabajo y comunicación.');
+  await page.getByRole('button', { name: 'Publicar calificación' }).click();
+  await expect(page.getByLabel('4 de 5 estrellas')).toBeVisible();
+  expect(reviewPayload).toEqual({ calificacion: 4, comentario: 'Buen trabajo y comunicación.' });
+  await expect(page.getByRole('button', { name: 'Calificar servicio' })).toHaveCount(0);
+});
+

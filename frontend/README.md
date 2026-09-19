@@ -45,6 +45,17 @@ usuarios ni solicitudes en Supabase. Cubren filtros combinados, paginación,
 respuestas fuera de orden, validaciones, errores, autenticación del envío,
 prevención de doble envío, teclado y presentación móvil.
 
+## Gestión e historial (HU-17 y HU-18)
+
+- `/worker/requests` muestra las peticiones del perfil autenticado. El trabajador
+  puede aceptar o rechazar una petición enviada, iniciar una aceptada y completar
+  una aceptada o en proceso.
+- `/client/requests` muestra el historial del cliente autenticado. Una solicitud
+  completada y todavía sin reseña habilita la calificación de 1 a 5 estrellas.
+- Las rutas dedicadas están bajo `/api/requests` y validan que el usuario sea el
+  cliente o el trabajador asociado. Las rutas genéricas de solicitudes y reseñas
+  se retiraron para impedir que un usuario modifique registros ajenos.
+
 Si tienes Chrome instalado, puedes establecer `PLAYWRIGHT_CHANNEL=chrome`.
 En PowerShell: `$env:PLAYWRIGHT_CHANNEL='chrome'`.
 En entornos Windows restringidos donde el empaquetador no puede leer directorios

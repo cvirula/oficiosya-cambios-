@@ -8,6 +8,8 @@ import ResetPassword from './pages/ResetPassword';
 import Home from './pages/Home';
 import WorkerProfile from './pages/WorkerProfile';
 import PublicWorkerProfile from './pages/PublicWorkerProfile';
+import ClientRequests from './pages/ClientRequests';
+import WorkerRequests from './pages/WorkerRequests';
 import { Router, matchPath, useNavigate, usePath } from './router';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 
@@ -49,6 +51,12 @@ function AppRoutes({ mode, onModeChange }) {
   }
 
   if (isAuthenticated && !AUTH_PATHS.has(path)) {
+    if (path === '/client/requests') {
+      return <ClientRequests />;
+    }
+    if (path === '/worker/requests') {
+      return <WorkerRequests />;
+    }
     if (path === '/worker/profile') {
       return <WorkerProfile />;
     }

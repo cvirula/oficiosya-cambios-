@@ -8,6 +8,8 @@ import {
 import { UsuarioRow } from '../common/usuario.util';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateRequestDto } from './dto/create-request.dto';
+import { CreateReviewDto } from './dto/create-review.dto';
+import { RequestStatus, UpdateRequestStatusDto } from './dto/update-request-status.dto';
 
 export const ESTADO_SOLICITUD_INICIAL = 'Enviada';
 
@@ -37,6 +39,26 @@ type ServicioRow = {
   nombre: string;
   descripcion: string | null;
   activo: boolean;
+};
+
+type ReviewRow = {
+  id_resena: number;
+  id_solicitud: number;
+  id_cliente: number;
+  id_trabajador: number;
+  calificacion: number;
+  comentario: string | null;
+  respuesta: string | null;
+  fecha: string;
+};
+
+const WORKER_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
+  Enviada: ['Aceptada', 'Rechazada'],
+  Aceptada: ['En proceso', 'Completada'],
+  'En proceso': ['Completada'],
+  Completada: [],
+  Rechazada: [],
+  Cancelada: [],
 };
 
 @Injectable()
@@ -81,6 +103,144 @@ export class RequestsService {
     return this.present(saved, perfil, servicio);
   }
 
+  async listClient(cliente: UsuarioRow) {
+    const rows = await this.findRequests('id_cliente', cliente.id_usuario);
+    return this.presentMany(rows);
+  }
+
+  async listWorker(usuario: UsuarioRow) {
+    const perfil = await this.findPerfilByUser(usuario.id_usuario);
+    if (!perfil) {
+      throw new NotFoundException('Aún no tienes un perfil de trabajador.');
+    }
+    const rows = await this.findRequests('id_trabajador', perfil.id_perfil);
+    return this.presentMany(rows);
+  }
+
+  async updateStatus(usuario: UsuarioRow, idSolicitud: number, dto: UpdateRequestStatusDto) {
+    const perfil = await this.findPerfilByUser(usuario.id_usuario);
+    if (!perfil) throw new NotFoundException('Aún no tienes un perfil de trabajador.');
+    const request = await this.findRequest(idSolicitud);
+    if (!request) throw new NotFoundException('La solicitud no existe.');
+    if (request.id_trabajador !== perfil.id_perfil) {
+      throw new ForbiddenException('Solo el trabajador asignado puede gestionar esta solicitud.');
+    }
+    const current = request.estado as RequestStatus;
+    if (!WORKER_TRANSITIONS[current]?.includes(dto.estado)) {
+      throw new BadRequestException(`No se puede cambiar una solicitud de ${request.estado} a ${dto.estado}.`);
+    }
+    const { data, error } = await this.supabase
+      .from('solicitud_servicio')
+      .update({ estado: dto.estado })
+      .eq('id_solicitud', idSolicitud)
+      .eq('estado', request.estado)
+      .select('*')
+      .maybeSingle();
+    if (error) throw new BadRequestException(error.message);
+    if (!data) throw new ConflictException('La solicitud cambió mientras la estabas gestionando. Actualiza el panel.');
+    await this.registrarBitacora(usuario.id_usuario, `REQUEST_${dto.estado.toUpperCase().replace(/ /g, '_')}`, 'solicitud_servicio');
+    return (await this.presentMany([data as SolicitudRow]))[0];
+  }
+
+  async createReview(cliente: UsuarioRow, idSolicitud: number, dto: CreateReviewDto) {
+    const request = await this.findRequest(idSolicitud);
+    if (!request) throw new NotFoundException('La solicitud no existe.');
+    if (request.id_cliente !== cliente.id_usuario) {
+      throw new ForbiddenException('Solo el cliente de esta solicitud puede calificarla.');
+    }
+    if (request.estado !== 'Completada') {
+      throw new BadRequestException('Solo puedes calificar una solicitud completada.');
+    }
+    const existing = await this.findReview(idSolicitud);
+    if (existing) throw new ConflictException('Esta solicitud ya fue calificada.');
+    const payload = {
+      id_solicitud: request.id_solicitud,
+      id_cliente: cliente.id_usuario,
+      id_trabajador: request.id_trabajador,
+      calificacion: dto.calificacion,
+      comentario: dto.comentario?.trim() || null,
+      fecha: new Date().toISOString(),
+    };
+    const saved = await this.insertReview(payload);
+    await this.registrarBitacora(cliente.id_usuario, 'CREATE_REVIEW', 'resena');
+    return saved;
+  }
+
+  private async presentMany(rows: SolicitudRow[]) {
+    const profileIds = [...new Set(rows.map((row) => row.id_trabajador))];
+    const serviceIds = [...new Set(rows.map((row) => row.id_servicio))];
+    const clientIds = [...new Set(rows.map((row) => row.id_cliente))];
+    const requestIds = rows.map((row) => row.id_solicitud);
+    const [profiles, services, clients, reviews] = await Promise.all([
+      this.loadMap('perfil_trabajador', 'id_perfil', profileIds, 'id_perfil, id_usuario, oficio_principal, disponibilidad'),
+      this.loadMap('servicio_ofrecido', 'id_servicio', serviceIds, 'id_servicio, id_perfil, nombre, descripcion, activo'),
+      this.loadMap('usuario', 'id_usuario', clientIds, 'id_usuario, nombre, telefono'),
+      this.loadMap('resena', 'id_solicitud', requestIds, 'id_resena, id_solicitud, calificacion, comentario, fecha'),
+    ]);
+    const ownerIds = [...new Set([...profiles.values()].map((profile) => Number(profile.id_usuario)))];
+    const owners = await this.loadMap('usuario', 'id_usuario', ownerIds, 'id_usuario, nombre, telefono');
+    return rows.map((row) => {
+      const profile = profiles.get(row.id_trabajador);
+      const service = services.get(row.id_servicio);
+      const client = clients.get(row.id_cliente);
+      const owner = profile ? owners.get(Number(profile.id_usuario)) : null;
+      const review = reviews.get(row.id_solicitud);
+      return {
+        ...row,
+        cliente: client ? { id_usuario: client.id_usuario, nombre: client.nombre, telefono: client.telefono } : null,
+        trabajador: profile ? { id_perfil: profile.id_perfil, nombre: owner?.nombre || 'Trabajador', oficio_principal: profile.oficio_principal } : null,
+        servicio: service ? { id_servicio: service.id_servicio, nombre: service.nombre } : null,
+        resena: review || null,
+      };
+    });
+  }
+
+  private async loadMap(table: string, key: string, ids: number[], select: string) {
+    const map = new Map<number, Record<string, any>>();
+    if (!ids.length) return map;
+    const { data, error } = await this.supabase.from(table).select(select).in(key, ids);
+    if (error) throw new BadRequestException(error.message);
+    for (const row of data || []) map.set(Number((row as any)[key]), row as Record<string, any>);
+    return map;
+  }
+
+  private async findRequests(key: 'id_cliente' | 'id_trabajador', value: number) {
+    const { data, error } = await this.supabase
+      .from('solicitud_servicio')
+      .select('*')
+      .eq(key, value)
+      .order('id_solicitud', { ascending: false });
+    if (error) throw new BadRequestException(error.message);
+    return (data || []) as SolicitudRow[];
+  }
+
+  private async findRequest(idSolicitud: number) {
+    const { data, error } = await this.supabase
+      .from('solicitud_servicio').select('*').eq('id_solicitud', idSolicitud).maybeSingle();
+    if (error) throw new BadRequestException(error.message);
+    return (data as SolicitudRow) || null;
+  }
+
+  private async findReview(idSolicitud: number) {
+    const { data, error } = await this.supabase
+      .from('resena').select('*').eq('id_solicitud', idSolicitud).maybeSingle();
+    if (error) throw new BadRequestException(error.message);
+    return (data as ReviewRow) || null;
+  }
+
+  private async insertReview(payload: Record<string, unknown>) {
+    const { data, error } = await this.supabase.from('resena').insert(payload).select('*').single();
+    if (!error && data) return data as ReviewRow;
+    if (/null value in column ["']?id_resena["']?/i.test(error?.message || '')) {
+      const nextId = await this.nextId('resena', 'id_resena');
+      const { data: retry, error: retryError } = await this.supabase
+        .from('resena').insert({ ...payload, id_resena: nextId }).select('*').single();
+      if (!retryError && retry) return retry as ReviewRow;
+      throw new BadRequestException(retryError?.message || 'No se pudo guardar la calificación.');
+    }
+    throw new BadRequestException(error?.message || 'No se pudo guardar la calificación.');
+  }
+
   private present(row: SolicitudRow, perfil: PerfilRow, servicio: ServicioRow) {
     return {
       id_solicitud: row.id_solicitud,
@@ -108,6 +268,16 @@ export class RequestsService {
       .from('perfil_trabajador')
       .select('id_perfil, id_usuario, oficio_principal, disponibilidad')
       .eq('id_perfil', idPerfil)
+      .maybeSingle();
+    if (error) throw new BadRequestException(error.message);
+    return (data as PerfilRow) || null;
+  }
+
+  private async findPerfilByUser(idUsuario: number) {
+    const { data, error } = await this.supabase
+      .from('perfil_trabajador')
+      .select('id_perfil, id_usuario, oficio_principal, disponibilidad')
+      .eq('id_usuario', idUsuario)
       .maybeSingle();
     if (error) throw new BadRequestException(error.message);
     return (data as PerfilRow) || null;
@@ -166,8 +336,8 @@ export class RequestsService {
   }
 
   private async nextId(
-    table: 'solicitud_servicio' | 'bitacora',
-    pk: 'id_solicitud' | 'id_evento',
+    table: 'solicitud_servicio' | 'bitacora' | 'resena',
+    pk: 'id_solicitud' | 'id_evento' | 'id_resena',
   ) {
     const { data } = await this.supabase
       .from(table)
