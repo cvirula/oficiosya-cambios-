@@ -9,7 +9,7 @@ export class ApiError extends Error {
   }
 }
 
-export async function api(path, { method = 'GET', body, token, signal } = {}) {
+export async function api(path, { method = 'GET', body, token } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -18,7 +18,6 @@ export async function api(path, { method = 'GET', body, token, signal } = {}) {
   const response = await fetch(`${API_URL}${path}`, {
     method,
     headers,
-    signal,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
