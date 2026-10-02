@@ -12,6 +12,10 @@ import styles from './Home.module.css';
 const PAGE_SIZE = 12;
 const money = (amount) => new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(amount);
 const RATE_LABELS = { por_hora: 'Por hora', por_servicio: 'Por servicio', a_convenir: 'A convenir' };
+const CATEGORIES = [
+  ['🔧', 'Reparaciones'], ['⚡', 'Electricidad'], ['🧹', 'Limpieza'],
+  ['🎨', 'Pintura'], ['🌿', 'Jardinería'], ['🔨', 'Carpintería'],
+];
 
 export default function Home() {
   const { logout, user } = useAuth();
@@ -76,7 +80,7 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <div className={styles.brand}><Logo variant="compact" /><span>Oficios<span className={styles.brandAccent}>YA</span></span></div>
+        <div className={styles.brand}><Logo variant="compact" /></div>
         <nav className={styles.nav} aria-label="Cuenta">
           <Link to="/client/requests">Mis solicitudes</Link>
           <Link to="/worker/requests">Panel trabajador</Link>
@@ -86,15 +90,25 @@ export default function Home() {
       </header>
       <main className={styles.main}>
         <section className={styles.hero} aria-labelledby="search-title">
-          <p className={styles.eyebrow}>ENCUENTRA AYUDA CERCA DE TI</p>
-          <h1 id="search-title">El oficio que necesitas,<br />en el lugar indicado.</h1>
-          <p>Busca profesionales, compara sus servicios y cuéntales qué necesitas.</p>
+          <p className={styles.eyebrow}>PROFESIONALES CERCA DE TI</p>
+          <h1 id="search-title">Servicios de Calidad</h1>
+          <p>Encuentra al profesional indicado para resolver lo que necesitas.</p>
           <form className={styles.searchBar} role="search" onSubmit={applySearch}>
             <label className="sr-only" htmlFor="general-search">Buscar por oficio o servicio</label>
             <span aria-hidden="true" className={styles.searchIcon}>⌕</span>
             <input id="general-search" type="search" maxLength={150} placeholder="¿Qué servicio necesitas? Ej. plomería" value={draft.q} onChange={(event) => change('q', event.target.value)} />
             <button type="submit" className={ui.primary}>Buscar</button>
           </form>
+        </section>
+        <section className={styles.categories} aria-labelledby="categories-title">
+          <div className={styles.sectionHeading}><h2 id="categories-title">Explora por categoría</h2><span>Servicios para tu hogar y negocio</span></div>
+          <div className={styles.categoryList}>
+            {CATEGORIES.map(([icon, label]) => (
+              <button key={label} type="button" className={styles.category} onClick={() => { change('q', label); setQuery({ ...DEFAULT_FILTERS, q: label, offset: 0 }); }}>
+                <span aria-hidden="true">{icon}</span><strong>{label}</strong>
+              </button>
+            ))}
+          </div>
         </section>
         <div className={styles.layout}>
           <SearchFilters filters={draft} onChange={change} onSubmit={applySearch} onReset={reset} zones={zones} zonesError={zonesError} onRetryZones={() => setZonesRetry((n) => n + 1)} error={validation} />
@@ -110,7 +124,8 @@ export default function Home() {
               <div className={styles.empty}><h3>No encontramos profesionales</h3><p>Prueba otro oficio, amplía el rango de precio o cambia la zona.</p><button className={ui.secondary} onClick={reset}>Limpiar búsqueda y filtros</button></div>
             ) : <div className={styles.cards}>{result.perfiles.map((worker) => {
               const own = Number(worker.id_usuario) === Number(user?.id_usuario);
-              return <article key={worker.id_perfil} className={styles.card}>
+              return <article key={worker.id_perfil} className={`${styles.card} ${worker === result.perfiles[0] ? styles.recommended : ''}`}>
+                {worker === result.perfiles[0] && <span className={styles.recommendedLabel}>Recomendado para ti</span>}
                 <div className={styles.cardTop}><div className={styles.avatar} aria-hidden="true">{worker.nombre?.trim().charAt(0) || 'O'}</div><span className={worker.disponibilidad === 'Disponible' ? styles.available : styles.occupied}>{worker.disponibilidad}</span></div>
                 <h3>{worker.nombre}</h3><p className={styles.profession}>{worker.oficio_principal}</p>
                 {worker.verificado && <span className={styles.verified}>✓ Perfil verificado</span>}

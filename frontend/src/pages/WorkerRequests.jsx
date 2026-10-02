@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { listWorkerRequests, updateRequestStatus } from '../api/requests';
 import { useAuth } from '../auth/AuthContext';
 import RequestCard from '../components/requests/RequestCard';
+import BackButton from '../components/ui/BackButton';
 import { Link } from '../router';
 import ui from '../components/search/Search.module.css';
 import styles from './Requests.module.css';
@@ -49,7 +50,7 @@ export default function WorkerRequests() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.top}><Link to="/">← Inicio</Link><Link to="/client/requests">Mis solicitudes como cliente</Link></header>
+      <header className={styles.top}><BackButton to="/">Regresar al inicio</BackButton><Link to="/client/requests">Mis solicitudes como cliente</Link></header>
       <main className={styles.main}>
         <div className={styles.heading}><div><p className={styles.eyebrow}>ÁREA DEL TRABAJADOR</p><h1>Peticiones recibidas</h1><p>Acepta trabajos, actualiza su avance y consulta las calificaciones recibidas.</p></div><Link className={ui.secondary} to="/worker/profile">Tarifas y cobertura</Link></div>
         <div className={styles.filters} role="group" aria-label="Filtrar peticiones">

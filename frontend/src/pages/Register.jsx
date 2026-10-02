@@ -3,6 +3,7 @@ import Logo from '../components/Logo';
 import Input from '../components/ui/Input';
 import PasswordInput from '../components/ui/PasswordInput';
 import Button from '../components/ui/Button';
+import BackButton from '../components/ui/BackButton';
 import { UserIcon, MailIcon, LockIcon, PhoneIcon } from '../components/icons/Icons';
 import { Link, useNavigate } from '../router';
 import { useAuth } from '../auth/AuthContext';
@@ -205,6 +206,7 @@ export default function Register({ mode = 'client' }) {
 
   return (
     <div className={authStyles.card}>
+      <BackButton to="/login">Regresar</BackButton>
       <Logo />
 
       <header className={authStyles.header}>

@@ -1,0 +1,19 @@
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  width: fit-content;
+  min-height: 40px;
+  padding: 8px 15px;
+  color: var(--color-primary-dark);
+  background: var(--color-card);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+
+.back:hover { background: var(--color-bg-light); border-color: var(--color-primary); }
+.back:active { transform: translateX(-2px); }
+.back > span:first-child { font-size: 20px; line-height: 1; }

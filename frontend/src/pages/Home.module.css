@@ -12,6 +12,15 @@
 .searchBar { margin-top: 24px; display: flex; gap: 10px; align-items: center; background: white; border: 1px solid #b9d5cb; border-radius: 12px; padding: 8px; max-width: 760px; }
 .searchIcon { font-size: 30px; padding-left: 12px; }
 .searchBar input { min-width: 0; flex: 1; border: 0; padding: 10px 4px; color: #183e37; background: white; font-size: 14px; }
+.categories { margin-bottom: 36px; }
+.sectionHeading { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 18px; }
+.sectionHeading h2 { font-size: 20px; }
+.sectionHeading span { color: var(--color-text-secondary); font-size: 12px; }
+.categoryList { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 14px; }
+.category { border: 0; background: transparent; display: grid; justify-items: center; gap: 9px; cursor: pointer; color: var(--color-text); }
+.category > span { width: 70px; height: 70px; display: grid; place-items: center; border-radius: 50%; background: var(--color-card); border: 2px solid var(--color-accent-light); font-size: 28px; transition: transform var(--transition), background var(--transition); }
+.category:hover > span { transform: translateY(-3px); background: var(--color-bg-light); }
+.category strong { font-size: 12px; font-weight: 600; }
 .layout { display: grid; grid-template-columns: 285px minmax(0, 1fr); gap: 28px; align-items: start; }
 .results { min-width: 0; }
 .resultsHeading { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin: 2px 0 20px; flex-wrap: wrap; }
@@ -20,6 +29,8 @@
 .query { margin-bottom: 16px; overflow-wrap: anywhere; }
 .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .card { padding: 24px; display: flex; flex-direction: column; align-items: start; gap: 8px; background: white; border: 1px solid #dbe7e5; border-radius: 16px; overflow-wrap: anywhere; }
+.recommended { border: 2px solid var(--color-primary); padding: 23px; box-shadow: var(--shadow-card); }
+.recommendedLabel { align-self: stretch; margin: -23px -23px 14px; padding: 8px 16px; border-radius: 17px 17px 0 0; background: var(--color-primary); color: white; text-align: center; font-size: 11px; font-weight: 600; }
 .cardTop { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 10px; margin-bottom: 8px; }
 .avatar { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #e1f1ec; color: #256d5c; font-size: 23px; font-weight: 600; }
 .available, .occupied { font-size: 11px; padding: 5px 9px; border-radius: 20px; background: #e9f5ed; color: #28613e; }
@@ -39,3 +50,15 @@
 .footer { text-align: center; padding: 24px; color: #526b67; border-top: 1px solid #dbe7e5; font-size: 12px; }
 @media (max-width: 960px) { .layout { grid-template-columns: 255px minmax(0, 1fr); gap: 20px; } .cards { grid-template-columns: 1fr; } }
 @media (max-width: 680px) { .header { padding: 14px 18px; flex-wrap: wrap; gap: 12px; } .brand { font-size: 21px; } .nav { width: 100%; justify-content: flex-start; gap: 10px 16px; } .main { padding: 20px 16px 40px; } .hero { padding: 24px 20px; } .hero h1 { font-size: 30px; } .searchIcon { display: none; } .searchBar input { font-size: 13px; } .searchBar button { padding: 10px 13px; } .layout { grid-template-columns: 1fr; } .resultsHeading h2 { font-size: 20px; } }
+
+/* Sistema visual definido en el acta UI/UX. */
+.page { background: var(--color-bg); color: var(--color-text); }
+.header { border-color: var(--color-border); }
+.hero { padding: 48px 40px; text-align: center; background: var(--color-bg-light); border-color: var(--color-accent-light); border-radius: 24px; }
+.hero > p:not(.eyebrow) { color: var(--color-text-secondary); }
+.searchBar { margin: 24px auto 0; border-color: var(--color-secondary); border-radius: var(--radius-pill); box-shadow: var(--shadow-card); }
+.searchBar input:focus { outline: none; }
+.card { position: relative; border-color: var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+
+@media (max-width: 900px) { .categoryList { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 520px) { .hero { padding: 34px 18px; } .categoryList { grid-template-columns: repeat(2, 1fr); } .sectionHeading { align-items: start; flex-direction: column; } }

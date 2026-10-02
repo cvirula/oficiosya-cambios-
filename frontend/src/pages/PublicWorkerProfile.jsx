@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react';
 import Button from '../components/ui/Button';
+import BackButton from '../components/ui/BackButton';
 import Rating from '../components/worker/Rating';
 import WorkerGallery from '../components/worker/WorkerGallery';
 import CoverageMap from '../components/worker/CoverageMap';
@@ -44,6 +45,7 @@ export default function PublicWorkerProfile({ workerId }) {
   return (
     <div className={styles.page}>
       <article className={styles.layout}>
+        <BackButton to="/">Regresar a profesionales</BackButton>
         {/* —— Información principal —— */}
         <header className={styles.heroCard}>
           <div className={styles.heroTop}>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Logo from '../components/Logo';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
+import BackButton from '../components/ui/BackButton';
 import { MailIcon } from '../components/icons/Icons';
 import { Link } from '../router';
 import { useAuth } from '../auth/AuthContext';
@@ -47,6 +48,7 @@ export default function ForgotPassword() {
 
   return (
     <div className={authStyles.card}>
+      <BackButton to="/login">Regresar</BackButton>
       <Logo />
 
       <header className={authStyles.header}>

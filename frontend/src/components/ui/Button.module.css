@@ -9,7 +9,7 @@
   font-family: var(--font-poppins);
   font-weight: var(--font-weight-medium);
   font-size: var(--text-sm);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   border: 1px solid transparent;
   cursor: pointer;
   transition:
@@ -54,8 +54,8 @@
 /* Outline */
 .outline {
   background-color: var(--color-card);
-  color: var(--color-text);
-  border-color: var(--color-border);
+  color: var(--color-primary-dark);
+  border-color: var(--color-primary);
 }
 
 .outline:hover:not(:disabled) {

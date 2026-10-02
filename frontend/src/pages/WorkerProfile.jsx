@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import Button from '../components/ui/Button';
+import BackButton from '../components/ui/BackButton';
 import Checkbox from '../components/ui/Checkbox';
 import { useAuth } from '../auth/AuthContext';
 import { getWorkerProfile, listZonas, updateWorkerProfile } from '../api/worker';
 import styles from './WorkerProfile.module.css';
-import { Link } from '../router';
 
 const TIPOS_TARIFA = [
   { value: 'por_hora', label: 'Por hora' },
@@ -137,7 +137,7 @@ export default function WorkerProfile() {
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
-        <p><Link to="/worker/requests">← Volver al panel de peticiones</Link></p>
+        <BackButton to="/worker/requests">Regresar al panel</BackButton>
         <header className={styles.header}>
           <h1 className={styles.title}>Tarifas y cobertura</h1>
           <p className={styles.subtitle}>

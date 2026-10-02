@@ -3,6 +3,7 @@ import { listClientRequests } from '../api/requests';
 import { useAuth } from '../auth/AuthContext';
 import RequestCard from '../components/requests/RequestCard';
 import RatingModal from '../components/requests/RatingModal';
+import BackButton from '../components/ui/BackButton';
 import { Link } from '../router';
 import ui from '../components/search/Search.module.css';
 import styles from './Requests.module.css';
@@ -27,7 +28,7 @@ export default function ClientRequests() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.top}><Link to="/">← Volver a buscar</Link><Link to="/worker/requests">Panel del trabajador</Link></header>
+      <header className={styles.top}><BackButton to="/">Regresar a buscar</BackButton><Link to="/worker/requests">Panel del trabajador</Link></header>
       <main className={styles.main}>
         <div className={styles.heading}><div><p className={styles.eyebrow}>ÁREA DEL CLIENTE</p><h1>Mis solicitudes</h1><p>Consulta el avance de tus servicios y califica los trabajos completados.</p></div></div>
         {loading ? <div className={styles.message} role="status">Cargando tu historial…</div> : error ? (

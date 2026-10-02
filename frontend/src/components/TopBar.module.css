@@ -5,6 +5,7 @@
   width: 100%;
   background-color: var(--color-card);
   border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 3px 18px rgba(40, 124, 124, .06);
 }
 
 .inner {
