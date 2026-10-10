@@ -1,10 +1,18 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { IsString, MaxLength, MinLength } from 'class-validator';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsuarioRow } from '../common/usuario.util';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { ReviewsService } from './reviews.service';
+
+class ReplyReviewDto {
+  @IsString()
+  @MinLength(2)
+  @MaxLength(1000)
+  respuesta: string;
+}
 
 @ApiTags('Reviews')
 @ApiBearerAuth('access-token')
@@ -25,5 +33,15 @@ export class ReviewsController {
   @ApiResponse({ status: 409, description: 'La solicitud ya tiene una reseña.' })
   create(@CurrentUser() user: UsuarioRow, @Body() dto: CreateReviewDto) {
     return this.reviews.create(user, dto);
+  }
+
+  @Put(':id/reply')
+  @ApiOperation({ summary: 'Responder una única vez a una reseña propia' })
+  reply(
+    @CurrentUser() user: UsuarioRow,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReplyReviewDto,
+  ) {
+    return this.reviews.reply(user, id, dto.respuesta);
   }
 }

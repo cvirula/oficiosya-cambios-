@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
+  ParseIntPipe,
   Post,
   UploadedFile,
   UseGuards,
@@ -61,5 +64,11 @@ export class PortfolioController {
     @Body() dto: UploadPortfolioDto,
   ) {
     return this.portfolio.upload(user, file, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar una foto propia del portafolio' })
+  remove(@CurrentUser() user: UsuarioRow, @Param('id', ParseIntPipe) id: number) {
+    return this.portfolio.remove(user, id);
   }
 }

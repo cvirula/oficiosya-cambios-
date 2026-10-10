@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -34,6 +35,17 @@ export class RequestsController {
   })
   create(@CurrentUser() user: UsuarioRow, @Body() dto: CreateRequestDto) {
     return this.requests.create(user, dto);
+  }
+
+  @Post(':id/images')
+  @UseInterceptors(FilesInterceptor('files', 3, { limits: { fileSize: 8 * 1024 * 1024 } }))
+  @ApiOperation({ summary: 'Adjuntar hasta tres imágenes de referencia a una solicitud' })
+  uploadImages(
+    @CurrentUser() user: UsuarioRow,
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFiles() files: Array<{ buffer: Buffer; mimetype?: string; originalname?: string }>,
+  ) {
+    return this.requests.attachImages(user, id, files || []);
   }
 
   @Put(':id/status')

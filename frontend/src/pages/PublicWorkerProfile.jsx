@@ -243,7 +243,7 @@ export default function PublicWorkerProfile({ workerId }) {
                   <span>{'★'.repeat(Number(r.calificacion) || 0)}</span>
                   <span>
                     {r.comentario || 'Sin comentario'}
-                    {r.respuesta_trabajador ? ` · Respuesta: ${r.respuesta_trabajador}` : ''}
+                    {(r.respuesta_trabajador || r.respuesta) ? ` · Respuesta: ${r.respuesta_trabajador || r.respuesta}` : ''}
                   </span>
                 </li>
               ))}

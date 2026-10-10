@@ -36,6 +36,16 @@ export default function CoverageMap({ coverage }) {
         data-lng={center?.lng}
         data-radius-km={radiusKm}
       >
+        {center?.lat && center?.lng ? (
+          <iframe
+            title={`Mapa aproximado de ${centerLabel}`}
+            className={styles.realMap}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${center.lng - 0.055}%2C${center.lat - 0.04}%2C${center.lng + 0.055}%2C${center.lat + 0.04}&layer=mapnik`}
+          />
+        ) : null}
+        <div className={styles.coverageOverlay} aria-hidden="true" />
         <svg
           className={styles.mapSvg}
           viewBox="0 0 640 360"

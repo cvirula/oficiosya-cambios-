@@ -3,6 +3,7 @@ import { UsuarioRow } from '../common/usuario.util';
 import { SupabaseService } from '../supabase/supabase.service';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 import { UpdateWorkerProfileDto } from './dto/update-worker-profile.dto';
+import { UpdateContactDto } from './dto/update-contact.dto';
 import {
   normalizeDisponibilidad,
   parseProfileExtras,
@@ -117,6 +118,25 @@ export class WorkerService {
     });
     await this.registrarBitacora(usuario.id_usuario, 'TOGGLE_AVAILABILITY', 'perfil_trabajador');
     return this.present(saved);
+  }
+
+  async getContact(usuario: UsuarioRow) {
+    const { data, error } = await this.supabase
+      .from('usuario').select('correo, telefono').eq('id_usuario', usuario.id_usuario).single();
+    if (error || !data) throw new NotFoundException('No se encontraron tus datos de contacto.');
+    return data;
+  }
+
+  async updateContact(usuario: UsuarioRow, dto: UpdateContactDto) {
+    const payload: Record<string, string | null> = {};
+    if (dto.telefono !== undefined) payload.telefono = dto.telefono.trim() || null;
+    if (!Object.keys(payload).length) throw new BadRequestException('No hay cambios para guardar.');
+    const { data, error } = await this.supabase
+      .from('usuario').update(payload).eq('id_usuario', usuario.id_usuario)
+      .select('correo, telefono').single();
+    if (error || !data) throw new BadRequestException(error?.message || 'No se actualizó el contacto.');
+    await this.registrarBitacora(usuario.id_usuario, 'UPDATE_CONTACT', 'usuario');
+    return data;
   }
 
   private presentDraft(usuario: UsuarioRow) {

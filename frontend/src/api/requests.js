@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, apiMultipart } from './client';
 
 export function listWorkerServices(workerId, { signal } = {}) {
   const query = new URLSearchParams({ id_perfil: String(workerId), activo: 'true' });
@@ -9,12 +9,19 @@ export function createRequest(payload, token) {
   return api('/requests/create', { method: 'POST', body: payload, token });
 }
 
+export function uploadRequestImages(id, files, token) {
+  const body = new FormData();
+  [...files].slice(0, 3).forEach((file) => body.append('files', file));
+  return apiMultipart(`/requests/${id}/images`, { body, token });
+}
+
 export function updateRequestStatus(id, accionOrPayload, token) {
-  const accion =
-    typeof accionOrPayload === 'string' ? accionOrPayload : accionOrPayload?.accion;
+  const payload = typeof accionOrPayload === 'string'
+    ? { accion: accionOrPayload }
+    : accionOrPayload;
   return api(`/requests/${id}/status`, {
     method: 'PUT',
-    body: { accion },
+    body: payload,
     token,
   });
 }

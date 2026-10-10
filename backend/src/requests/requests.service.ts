@@ -7,6 +7,9 @@ import {
 } from '@nestjs/common';
 import { UsuarioRow } from '../common/usuario.util';
 import { SupabaseService } from '../supabase/supabase.service';
+import { ImageCompressService } from '../portfolio/image-compress.service';
+import { StorageService } from '../portfolio/storage.service';
+import { randomBytes } from 'crypto';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
 import {
@@ -48,7 +51,43 @@ type ServicioRow = {
 
 @Injectable()
 export class RequestsService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly images: ImageCompressService,
+    private readonly storage: StorageService,
+  ) {}
+
+  async attachImages(
+    cliente: UsuarioRow,
+    idSolicitud: number,
+    files: Array<{ buffer: Buffer; mimetype?: string; originalname?: string }>,
+  ) {
+    const solicitud = await this.findSolicitud(idSolicitud);
+    if (!solicitud) throw new NotFoundException('La solicitud no existe.');
+    if (solicitud.id_cliente !== cliente.id_usuario) {
+      throw new ForbiddenException('Solo el cliente puede adjuntar imágenes a esta solicitud.');
+    }
+    if (!files.length) throw new BadRequestException('Selecciona al menos una imagen.');
+
+    const urls: string[] = [];
+    for (const [index, file] of files.slice(0, 3).entries()) {
+      const compressed = await this.images.compress(file.buffer, file.mimetype);
+      const path = `solicitudes/${idSolicitud}/${Date.now()}-${randomBytes(4).toString('hex')}-${index + 1}.webp`;
+      urls.push(await this.storage.uploadPublic(path, compressed.full, 'image/webp'));
+    }
+    const notes = urls.map((url, index) => `\nImagen de referencia ${index + 1}: ${url}`).join('');
+    const descripcion = `${solicitud.descripcion}${notes}`.slice(0, 4000);
+    const { data, error } = await this.supabase
+      .from('solicitud_servicio')
+      .update({ descripcion })
+      .eq('id_solicitud', idSolicitud)
+      .select('*')
+      .single();
+    if (error || !data) throw new BadRequestException(error?.message || 'No se guardaron las imágenes.');
+    const perfil = await this.findPerfil(solicitud.id_trabajador);
+    const servicio = await this.findServicio(solicitud.id_servicio);
+    return { ...this.present(data as SolicitudRow, perfil!, servicio), imagenes: urls };
+  }
 
   async create(cliente: UsuarioRow, dto: CreateRequestDto) {
     const perfil = await this.findPerfil(dto.id_trabajador);
@@ -133,6 +172,16 @@ export class RequestsService {
       (await this.updateStatusViaRpc(idSolicitud, usuario.id_usuario, dto.accion)) ||
       (await this.updateStatusLocked(solicitud, transicion.next));
     saved.estado = transicion.next;
+
+    if (dto.accion === 'Rechazar' && dto.motivo?.trim()) {
+      const descripcion = `${saved.descripcion}\n\nMotivo de rechazo: ${dto.motivo.trim()}`.slice(0, 4000);
+      const { error } = await this.supabase
+        .from('solicitud_servicio')
+        .update({ descripcion })
+        .eq('id_solicitud', idSolicitud);
+      if (error) throw new BadRequestException(error.message);
+      saved.descripcion = descripcion;
+    }
 
     const servicio = await this.findServicio(saved.id_servicio);
     await this.registrarBitacora(

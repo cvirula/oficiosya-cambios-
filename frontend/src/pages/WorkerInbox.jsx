@@ -63,7 +63,11 @@ export default function WorkerInbox() {
     setBusyId(id);
     setError('');
     try {
-      await updateRequestStatus(id, { accion }, token);
+      await updateRequestStatus(
+        id,
+        { accion, ...(accion === 'Rechazar' ? { motivo: motivo.trim() } : {}) },
+        token,
+      );
       setRejectId(null);
       setMotivo('');
       await load();

@@ -15,10 +15,10 @@ import { useAuth } from '../auth/AuthContext';
 import { isAdminUser } from '../lib/admin';
 import {
   listCategories,
-  listReports,
   listUsers,
   listWorkerProfiles,
 } from '../api/admin';
+import { listAdminReports } from '../api/reports';
 import { listResource } from '../api/resources';
 import styles from './Admin.module.css';
 
@@ -41,7 +41,7 @@ export default function AdminDashboard() {
       listWorkerProfiles(token),
       listResource('solicitudes', {}, token),
       listCategories(token),
-      listReports(token),
+      listAdminReports(token, { estado: 'todos' }),
     ])
       .then(([u, w, s, c, r]) => {
         setUsers(u);
@@ -76,7 +76,7 @@ export default function AdminDashboard() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6);
 
-    return { clientes, trabajadores, activos, tasa, avg, topCats, pendingReports: reports.filter((r) => r.estado === 'Pendiente').length };
+    return { clientes, trabajadores, activos, tasa, avg, topCats, pendingReports: reports.filter((r) => r.estado === 'PENDIENTE').length };
   }, [users, workers, requests, reports]);
 
   if (!isAdminUser(user)) {

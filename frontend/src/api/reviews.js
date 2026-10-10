@@ -10,5 +10,5 @@ export function listReviews(query = {}, token) {
 }
 
 export function replyToReview(id, respuesta, token) {
-  return updateResource('resenas', id, { respuesta_trabajador: respuesta }, token);
+  return api(`/reviews/${id}/reply`, { method: 'PUT', body: { respuesta }, token });
 }

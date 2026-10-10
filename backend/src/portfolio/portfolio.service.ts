@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { UsuarioRow } from '../common/usuario.util';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -67,6 +67,19 @@ export class PortfolioService {
 
     await this.registrarBitacora(usuario.id_usuario, 'UPLOAD_PORTFOLIO', 'portafolio');
     return this.present(saved, thumbUrl);
+  }
+
+  async remove(usuario: UsuarioRow, idElemento: number) {
+    const perfil = await this.requirePerfil(usuario.id_usuario);
+    const { data: item, error: readError } = await this.supabase
+      .from('portafolio').select('id_elemento, id_perfil').eq('id_elemento', idElemento).maybeSingle();
+    if (readError) throw new BadRequestException(readError.message);
+    if (!item) throw new NotFoundException('La foto no existe.');
+    if (Number(item.id_perfil) !== perfil.id_perfil) throw new ForbiddenException('No puedes eliminar esta foto.');
+    const { error } = await this.supabase.from('portafolio').delete().eq('id_elemento', idElemento);
+    if (error) throw new BadRequestException(error.message);
+    await this.registrarBitacora(usuario.id_usuario, 'DELETE_PORTFOLIO', 'portafolio');
+    return { ok: true, id_elemento: idElemento };
   }
 
   private present(row: PortafolioRow, thumbUrl?: string) {

@@ -23,13 +23,32 @@ function readMessage(data) {
     data.message ||
     (Array.isArray(data.message) ? data.message[0] : null) ||
     'No se pudo completar la solicitud.';
-  return Array.isArray(message) ? message[0] : message;
+  const text = Array.isArray(message) ? message[0] : message;
+  if (/fetch failed|failed to fetch|networkerror|network request failed/i.test(String(text))) {
+    return 'No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo nuevamente.';
+  }
+  if (/invalid login credentials/i.test(String(text))) {
+    return 'Correo o contraseña incorrectos.';
+  }
+  return text;
+}
+
+async function safeFetch(url, options) {
+  try {
+    return await fetch(url, options);
+  } catch {
+    throw new ApiError(
+      'No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo nuevamente.',
+      0,
+      null,
+    );
+  }
 }
 
 async function refreshAccessToken() {
   const current = readSession();
   if (!current?.refreshToken) return null;
-  const response = await fetch(`${API_URL}/auth/refresh-token`, {
+  const response = await safeFetch(`${API_URL}/auth/refresh-token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refreshToken: current.refreshToken }),
@@ -53,7 +72,7 @@ export async function api(path, { method = 'GET', body, token, signal, _retry } 
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await safeFetch(`${API_URL}${path}`, {
     method,
     headers,
     signal,
@@ -83,7 +102,7 @@ export async function apiMultipart(path, { method = 'POST', body, token } = {}) 
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await safeFetch(`${API_URL}${path}`, {
     method,
     headers,
     body,

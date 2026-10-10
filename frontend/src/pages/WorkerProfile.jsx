@@ -3,8 +3,9 @@ import BackLink from '../components/BackLink';
 import Button from '../components/ui/Button';
 import Checkbox from '../components/ui/Checkbox';
 import { useAuth } from '../auth/AuthContext';
+import { useNavigate } from '../router';
 import { getMyDpi, submitDpi } from '../api/identity';
-import { getWorkerProfile, listZonas, updateWorkerAvailability, updateWorkerProfile } from '../api/worker';
+import { getWorkerContact, getWorkerProfile, listZonas, updateWorkerAvailability, updateWorkerContact, updateWorkerProfile } from '../api/worker';
 import styles from './WorkerProfile.module.css';
 
 const TIPOS_TARIFA = [
@@ -45,6 +46,7 @@ function toHHmm(value) {
 
 export default function WorkerProfile() {
   const { session } = useAuth();
+  const navigate = useNavigate();
   const token = session?.accessToken;
 
   const [loading, setLoading] = useState(true);
@@ -56,6 +58,8 @@ export default function WorkerProfile() {
   const [tarifas, setTarifas] = useState(EMPTY_TARIFAS);
   const [horarios, setHorarios] = useState([]);
   const [disponibilidad, setDisponibilidad] = useState('Disponible');
+  const [contactoVisible, setContactoVisible] = useState(true);
+  const [contacto, setContacto] = useState({ correo: '', telefono: '' });
   const [toggling, setToggling] = useState(false);
   const [dpi, setDpi] = useState(null);
   const [frente, setFrente] = useState(null);
@@ -72,10 +76,11 @@ export default function WorkerProfile() {
       setLoading(true);
       setError('');
       try {
-        const [profile, zonasData, dpiData] = await Promise.all([
+        const [profile, zonasData, dpiData, contactData] = await Promise.all([
           getWorkerProfile(token),
           listZonas(),
           getMyDpi(token).catch(() => null),
+          getWorkerContact(token).catch(() => ({ correo: '', telefono: '' })),
         ]);
 
         if (cancelled) return;
@@ -100,6 +105,8 @@ export default function WorkerProfile() {
           })),
         );
         setDisponibilidad(profile.disponibilidad === 'Ocupado' ? 'Ocupado' : 'Disponible');
+        setContactoVisible(profile.contacto_visible !== false);
+        setContacto({ correo: contactData.correo || '', telefono: contactData.telefono || '' });
         setDpi(dpiData);
 
         try {
@@ -224,6 +231,7 @@ export default function WorkerProfile() {
           hasta: toHHmm(slot.hasta),
         })),
         cobertura,
+        contacto_visible: contactoVisible,
       };
 
       if (showMontos) {
@@ -232,7 +240,9 @@ export default function WorkerProfile() {
       }
 
       await updateWorkerProfile(payload, token);
-      setSuccess('Datos actualizados correctamente.');
+      await updateWorkerContact({ telefono: contacto.telefono }, token);
+      setSuccess('Perfil actualizado correctamente. Regresando al panel…');
+      window.setTimeout(() => navigate('/', { replace: true }), 900);
     } catch (err) {
       setError(err.message || 'No se pudo guardar los cambios.');
     } finally {
@@ -296,6 +306,31 @@ export default function WorkerProfile() {
               >
                 {disponibilidad === 'Disponible' ? 'Marcar como Ocupado' : 'Marcar como Disponible'}
               </Button>
+            </section>
+
+            <section>
+              <h2 className={styles.sectionTitle}>Privacidad del contacto</h2>
+              <p className={styles.hint}>
+                Decide si tu correo y teléfono se muestran a clientes en los resultados públicos.
+              </p>
+              <Checkbox
+                id="contacto-visible"
+                label="Mostrar mis datos de contacto"
+                checked={contactoVisible}
+                onChange={() => setContactoVisible((value) => !value)}
+                disabled={saving}
+              />
+              <div className={styles.row}>
+                <div>
+                  <label className={styles.fieldLabel} htmlFor="contact-email">Correo</label>
+                  <input id="contact-email" className={styles.input} type="email" value={contacto.correo} readOnly aria-describedby="contact-email-help" />
+                  <p id="contact-email-help" className={styles.hint}>El correo de acceso se administra con la cuenta.</p>
+                </div>
+                <div>
+                  <label className={styles.fieldLabel} htmlFor="contact-phone">Teléfono</label>
+                  <input id="contact-phone" className={styles.input} type="tel" value={contacto.telefono} onChange={(e) => setContacto((v) => ({ ...v, telefono: e.target.value }))} disabled={saving} />
+                </div>
+              </div>
             </section>
 
             <section>

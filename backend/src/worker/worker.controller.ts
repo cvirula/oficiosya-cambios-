@@ -14,6 +14,7 @@ import { UsuarioRow } from '../common/usuario.util';
 import { HorarioDto } from './dto/horario.dto';
 import { TarifasDto } from './dto/tarifas.dto';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
+import { UpdateContactDto } from './dto/update-contact.dto';
 import { UpdateWorkerProfileDto } from './dto/update-worker-profile.dto';
 import { WorkerProfileResponseDto, ZonaCoberturaDto } from './dto/worker-profile-response.dto';
 import { WorkerService } from './worker.service';
@@ -67,5 +68,17 @@ export class WorkerController {
   @ApiOkResponse({ type: WorkerProfileResponseDto })
   updateAvailability(@CurrentUser() user: UsuarioRow, @Body() dto: UpdateAvailabilityDto = {}) {
     return this.workers.updateAvailability(user, dto);
+  }
+
+  @Get('contact')
+  @ApiOperation({ summary: 'Consultar los datos de contacto propios' })
+  getContact(@CurrentUser() user: UsuarioRow) {
+    return this.workers.getContact(user);
+  }
+
+  @Put('contact')
+  @ApiOperation({ summary: 'Actualizar correo y teléfono propios' })
+  updateContact(@CurrentUser() user: UsuarioRow, @Body() dto: UpdateContactDto) {
+    return this.workers.updateContact(user, dto);
   }
 }

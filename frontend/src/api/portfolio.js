@@ -11,3 +11,7 @@ export function uploadPortfolioPhoto({ file, titulo, descripcion, token }) {
   if (descripcion) body.append('descripcion', descripcion);
   return apiMultipart('/portfolio/upload', { body, token });
 }
+
+export function deletePortfolioPhoto(id, token) {
+  return api(`/portfolio/${id}`, { method: 'DELETE', token });
+}

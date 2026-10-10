@@ -4,6 +4,14 @@ export function getWorkerProfile(token) {
   return api('/worker/profile', { token });
 }
 
+export function getWorkerContact(token) {
+  return api('/worker/contact', { token });
+}
+
+export function updateWorkerContact(payload, token) {
+  return api('/worker/contact', { method: 'PUT', body: payload, token });
+}
+
 export function updateWorkerProfile(payload, token) {
   return api('/worker/profile', {
     method: 'PUT',

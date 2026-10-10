@@ -93,7 +93,7 @@ export default function AdminUsers() {
                           disabled={busy === row.id_usuario}
                           onClick={() => setEstado(row.id_usuario, 'SUSPENDIDO')}
                         >
-                          Banear
+                          Suspender
                         </button>
                       )}
                     </div>

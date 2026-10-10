@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import { createRequest, listWorkerServices } from '../../api/requests';
+import { createRequest, listWorkerServices, uploadRequestImages } from '../../api/requests';
 import { useNavigate } from '../../router';
 import ui from '../search/Search.module.css';
 import styles from './ServiceRequestModal.module.css';
@@ -87,31 +87,19 @@ export default function ServiceRequestModal({ worker, onClose }) {
     setBusy(true);
     setError('');
     try {
-      let imageNotes = '';
-      if (images.length) {
-        const encoded = await Promise.all(
-          [...images].slice(0, 3).map(async (file) => {
-            const dataUrl = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(String(reader.result));
-              reader.onerror = reject;
-              reader.readAsDataURL(file);
-            });
-            return `\n[ref-img:${file.name}] ${dataUrl.slice(0, 120)}…`;
-          }),
-        );
-        imageNotes = `\n\nImágenes de referencia adjuntas (${images.length}):${encoded.join('')}`;
-      }
       const data = await createRequest({
         id_trabajador: Number(worker.id_perfil),
         id_servicio: Number(form.id_servicio),
-        descripcion: `${description}${imageNotes}`.slice(0, 4000),
+        descripcion: description,
         ubicacion_aprox: form.ubicacion_aprox.trim() || undefined,
         fecha_deseada: form.fecha_deseada ? new Date(form.fecha_deseada).toISOString() : undefined,
         urgente: form.urgente,
       }, session.accessToken);
       if (!data.id_solicitud || !data.estado) throw new Error('Respuesta incompleta');
-      setSaved(data);
+      const completed = images.length
+        ? await uploadRequestImages(data.id_solicitud, images, session.accessToken)
+        : data;
+      setSaved(completed);
     } catch (err) {
       if (!err.status || err.status >= 500) {
         setUncertain(true);
@@ -168,7 +156,11 @@ export default function ServiceRequestModal({ worker, onClose }) {
               type="file"
               accept="image/*"
               multiple
-              onChange={(event) => setImages(event.target.files || [])}
+              onChange={(event) => {
+                const selected = [...(event.target.files || [])];
+                if (selected.length > 3) setError('Puedes adjuntar un máximo de 3 imágenes.');
+                setImages(selected.slice(0, 3));
+              }}
             />
           </label>
           {images?.length > 0 && (

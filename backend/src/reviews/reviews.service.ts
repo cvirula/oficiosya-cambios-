@@ -74,6 +74,26 @@ export class ReviewsService {
     };
   }
 
+  async reply(usuario: UsuarioRow, idResena: number, respuesta: string) {
+    const { data: perfil, error: profileError } = await this.supabase
+      .from('perfil_trabajador').select('id_perfil').eq('id_usuario', usuario.id_usuario).maybeSingle();
+    if (profileError) throw new BadRequestException(profileError.message);
+    if (!perfil) throw new ForbiddenException('Necesitas un perfil de trabajador.');
+    const { data: review, error: readError } = await this.supabase
+      .from('resena').select('*').eq('id_resena', idResena).maybeSingle();
+    if (readError) throw new BadRequestException(readError.message);
+    if (!review) throw new NotFoundException('La reseña no existe.');
+    if (Number(review.id_trabajador) !== Number(perfil.id_perfil)) {
+      throw new ForbiddenException('No puedes responder esta reseña.');
+    }
+    if (review.respuesta) throw new ConflictException('Esta reseña ya tiene una respuesta.');
+    const { data, error } = await this.supabase
+      .from('resena').update({ respuesta: respuesta.trim() }).eq('id_resena', idResena).select('*').single();
+    if (error || !data) throw new BadRequestException(error?.message || 'No se guardó la respuesta.');
+    await this.registrarBitacora(usuario.id_usuario, 'REPLY_REVIEW', 'resena');
+    return { ...this.present(data as ResenaRow), respuesta_trabajador: data.respuesta };
+  }
+
   private present(row: ResenaRow) {
     return {
       id_resena: row.id_resena,
@@ -82,6 +102,7 @@ export class ReviewsService {
       id_trabajador: row.id_trabajador,
       calificacion: row.calificacion,
       comentario: row.comentario,
+      respuesta_trabajador: row.respuesta,
       fecha: row.fecha,
     };
   }
